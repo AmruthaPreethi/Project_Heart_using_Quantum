@@ -8,7 +8,7 @@ the two stack up in terms of speed and accuracy.
 ## What it does
 
 The main page has a form where you enter clinical data (age, blood pressure, cholesterol,
-etc.) and it predicts whether the patient is likely to have heart disease, using a Random
+etc.) and it predicts whether the patient is likely to have heart disease, using a Randomn
 Forest model trained on the UCI heart disease dataset.
 
 Below that there's a "Classical vs Quantum Comparison" section. Clicking the button trains
