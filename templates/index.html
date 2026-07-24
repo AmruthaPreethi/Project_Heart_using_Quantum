@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Heart Disease Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>Heart Disease Prediction</h1>
+        <form id="predict-form">
+            <input type="number" step="any" name="age" placeholder="Age" required>
+            <input type="number" step="any" name="sex" placeholder="Sex (1=male, 0=female)" required>
+            <input type="number" step="any" name="cp" placeholder="Chest Pain Type" required>
+            <input type="number" step="any" name="trestbps" placeholder="Resting BP" required>
+            <input type="number" step="any" name="chol" placeholder="Cholesterol" required>
+            <input type="number" step="any" name="fbs" placeholder="Fasting Blood Sugar" required>
+            <input type="number" step="any" name="restecg" placeholder="Resting ECG" required>
+            <input type="number" step="any" name="thalach" placeholder="Max Heart Rate" required>
+            <input type="number" step="any" name="exang" placeholder="Exercise Induced Angina" required>
+            <input type="number" step="any" name="oldpeak" placeholder="Oldpeak" required>
+            <input type="number" step="any" name="slope" placeholder="Slope" required>
+            <input type="number" step="any" name="ca" placeholder="Number of vessels colored" required>
+            <input type="number" step="any" name="thal" placeholder="Thal" required>
+            <button type="submit">Predict</button>
+        </form>
+        <div id="result"></div>
+
+        <hr>
+
+        <h2>Classical vs Quantum Comparison</h2>
+        <p class="subtitle">Runs the classical model and a simulated single-qubit quantum classifier on the test set.</p>
+        <button id="quantum-btn" type="button">Run Comparison</button>
+        <div id="quantum-status"></div>
+        <div id="quantum-results" class="quantum-results" style="display:none;">
+            <table>
+                <tr><th></th><th>Classical</th><th>Quantum</th></tr>
+                <tr><td>Prediction Time (s)</td><td id="c-time"></td><td id="q-time"></td></tr>
+                <tr><td>Accuracy</td><td id="c-acc"></td><td id="q-acc"></td></tr>
+            </table>
+            <img id="quantum-chart" src="" alt="Prediction time comparison chart">
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('predict-form').addEventListener('submit', async function(e){
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            fetch('/predict', {
+                method: 'POST',
+                headers: {'Content-Type':'application/json'},
+                body: JSON.stringify(data)
+            })
+            .then(res => res.json())
+            .then(res => {
+                const txt = res.prediction === 1 ? "Heart Disease Detected" : "No Heart Disease";
+                document.getElementById('result').innerText = txt;
+            });
+        });
+
+        document.getElementById('quantum-btn').addEventListener('click', async function(){
+            const statusEl = document.getElementById('quantum-status');
+            const resultsEl = document.getElementById('quantum-results');
+            statusEl.innerText = "Running comparison... this can take a few seconds.";
+            resultsEl.style.display = "none";
+
+            try {
+                const res = await fetch('/quantum-compare', { method: 'POST' });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    statusEl.innerText = "Error: " + (data.error || "unknown error");
+                    return;
+                }
+
+                document.getElementById('c-time').innerText = data.classical_prediction_time;
+                document.getElementById('q-time').innerText = data.quantum_prediction_time;
+                document.getElementById('c-acc').innerText = data.classical_accuracy;
+                document.getElementById('q-acc').innerText = data.quantum_accuracy;
+                document.getElementById('quantum-chart').src = data.chart_url + "?t=" + Date.now();
+
+                statusEl.innerText = "";
+                resultsEl.style.display = "block";
+            } catch (err) {
+                statusEl.innerText = "Request failed: " + err.message;
+            }
+        });
+    </script>
+</body>
+</html>
