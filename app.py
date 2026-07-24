@@ -1,7 +1,7 @@
 import traceback
 from flask import Flask, render_template, request, jsonify
 from model import predict_heart_disease
-from quantum_model import run_comparison
+from vqc_model import run_vqc_comparison
 
 app = Flask(__name__)
 
@@ -35,11 +35,18 @@ def predict():
 
 @app.route('/quantum-compare', methods=['POST'])
 def quantum_compare():
+    """
+    Runs the paper's actual comparison: classical Logistic Regression
+    vs. a 4-qubit Variational Quantum Classifier (RY feature map,
+    CNOT entanglement chain, RX ansatz, COBYLA optimizer), on
+    PCA-reduced, StandardScaler-normalized data. This replaces the
+    old single-qubit / untrained placeholder.
+    """
     try:
-        results = run_comparison()
+        results = run_vqc_comparison()
         return jsonify(results)
     except Exception as e:
-        traceback.print_exc()  # full traceback still prints in the terminal
+        traceback.print_exc()
         return jsonify({'error': str(e)}), 500
 
 

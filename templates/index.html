@@ -1,90 +1,285 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Heart Disease Prediction</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<meta charset="UTF-8">
+<title>Heart Disease Prediction — Classical vs Quantum VQC</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --card: #ffffff;
+    --text: #1e293b;
+    --muted: #64748b;
+    --accent: #4C72B0;
+    --accent2: #DD8452;
+    --danger: #dc2626;
+    --danger-bg: #fef2f2;
+    --safe: #16a34a;
+    --safe-bg: #f0fdf4;
+    --border: #e2e8f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    max-width: 780px;
+    margin: 32px auto;
+    padding: 0 16px;
+    color: var(--text);
+    background: #f8fafc;
+  }
+  h1 { font-size: 1.5rem; margin-bottom: 4px; }
+  .subtitle { color: var(--muted); font-size: 0.9rem; margin-bottom: 24px; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 24px;
+  }
+  .card legend, .card h2 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 0 0 12px 0;
+    padding: 0;
+  }
+  label { display: block; margin-top: 10px; font-size: 0.85rem; color: var(--muted); }
+  input {
+    width: 100%;
+    padding: 8px 10px;
+    margin-top: 3px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: 0.95rem;
+  }
+  button {
+    margin-top: 18px;
+    padding: 10px 20px;
+    cursor: pointer;
+    background: var(--accent);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 500;
+  }
+  button:hover { opacity: 0.9; }
+  button:disabled { opacity: 0.6; cursor: not-allowed; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+  .hint { font-size: 0.85rem; color: var(--muted); margin: 0 0 4px 0; }
+
+  .verdict {
+    margin-top: 18px;
+    padding: 18px 20px;
+    border-radius: 10px;
+    font-size: 1.05rem;
+    font-weight: 600;
+    display: none;
+    align-items: center;
+    gap: 10px;
+  }
+  .verdict.risk { background: var(--danger-bg); color: var(--danger); border: 1px solid #fecaca; }
+  .verdict.safe { background: var(--safe-bg); color: var(--safe); border: 1px solid #bbf7d0; }
+  .verdict .icon { font-size: 1.4rem; }
+  .verdict .sub { display: block; font-weight: 400; font-size: 0.85rem; margin-top: 4px; opacity: 0.85; }
+
+  .charts-wrap { display: none; margin-top: 20px; }
+  .chart-box { margin-bottom: 28px; }
+  .chart-box canvas { max-height: 280px; }
+  .metrics-table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 0.85rem; }
+  .metrics-table th, .metrics-table td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  .metrics-table th { color: var(--muted); font-weight: 500; }
+  .status-msg { font-size: 0.9rem; color: var(--muted); margin-top: 12px; }
+  .note {
+    font-size: 0.8rem;
+    color: var(--muted);
+    background: #f1f5f9;
+    padding: 10px 12px;
+    border-radius: 8px;
+    margin-top: 16px;
+  }
+</style>
 </head>
 <body>
-    <div class="container">
-        <h1>Heart Disease Prediction</h1>
-        <form id="predict-form">
-            <input type="number" step="any" name="age" placeholder="Age" required>
-            <input type="number" step="any" name="sex" placeholder="Sex (1=male, 0=female)" required>
-            <input type="number" step="any" name="cp" placeholder="Chest Pain Type" required>
-            <input type="number" step="any" name="trestbps" placeholder="Resting BP" required>
-            <input type="number" step="any" name="chol" placeholder="Cholesterol" required>
-            <input type="number" step="any" name="fbs" placeholder="Fasting Blood Sugar" required>
-            <input type="number" step="any" name="restecg" placeholder="Resting ECG" required>
-            <input type="number" step="any" name="thalach" placeholder="Max Heart Rate" required>
-            <input type="number" step="any" name="exang" placeholder="Exercise Induced Angina" required>
-            <input type="number" step="any" name="oldpeak" placeholder="Oldpeak" required>
-            <input type="number" step="any" name="slope" placeholder="Slope" required>
-            <input type="number" step="any" name="ca" placeholder="Number of vessels colored" required>
-            <input type="number" step="any" name="thal" placeholder="Thal" required>
-            <button type="submit">Predict</button>
-        </form>
-        <div id="result"></div>
+  <h1>Heart Disease Risk Prediction</h1>
+  <p class="subtitle">Classical Random Forest prediction, plus a Classical vs Quantum (VQC) model comparison.</p>
 
-        <hr>
-
-        <h2>Classical vs Quantum Comparison</h2>
-        <p class="subtitle">Runs the classical model and a simulated single-qubit quantum classifier on the test set.</p>
-        <button id="quantum-btn" type="button">Run Comparison</button>
-        <div id="quantum-status"></div>
-        <div id="quantum-results" class="quantum-results" style="display:none;">
-            <table>
-                <tr><th></th><th>Classical</th><th>Quantum</th></tr>
-                <tr><td>Prediction Time (s)</td><td id="c-time"></td><td id="q-time"></td></tr>
-                <tr><td>Accuracy</td><td id="c-acc"></td><td id="q-acc"></td></tr>
-            </table>
-            <img id="quantum-chart" src="" alt="Prediction time comparison chart">
-        </div>
+  <div class="card">
+    <h2>Check patient risk</h2>
+    <div class="grid" id="predict-form">
+      <label>Age <input type="number" id="age" value="52"></label>
+      <label>Sex (1 = male, 0 = female) <input type="number" id="sex" value="1"></label>
+      <label>Chest pain type (cp) <input type="number" id="cp" value="0"></label>
+      <label>Resting BP (trestbps) <input type="number" id="trestbps" value="125"></label>
+      <label>Cholesterol (chol) <input type="number" id="chol" value="212"></label>
+      <label>Fasting blood sugar (fbs) <input type="number" id="fbs" value="0"></label>
+      <label>Resting ECG (restecg) <input type="number" id="restecg" value="1"></label>
+      <label>Max heart rate (thalach) <input type="number" id="thalach" value="168"></label>
+      <label>Exercise angina (exang) <input type="number" id="exang" value="0"></label>
+      <label>ST depression (oldpeak) <input type="number" step="0.1" id="oldpeak" value="1"></label>
+      <label>Slope <input type="number" id="slope" value="2"></label>
+      <label>ca <input type="number" id="ca" value="2"></label>
+      <label>thal <input type="number" id="thal" value="3"></label>
     </div>
+    <button id="predict-btn" onclick="runPredict()">Check risk</button>
 
-    <script>
-        document.getElementById('predict-form').addEventListener('submit', async function(e){
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
-            fetch('/predict', {
-                method: 'POST',
-                headers: {'Content-Type':'application/json'},
-                body: JSON.stringify(data)
-            })
-            .then(res => res.json())
-            .then(res => {
-                const txt = res.prediction === 1 ? "Heart Disease Detected" : "No Heart Disease";
-                document.getElementById('result').innerText = txt;
-            });
-        });
+    <div class="verdict" id="verdict">
+      <span class="icon" id="verdict-icon"></span>
+      <span>
+        <span id="verdict-text"></span>
+        <span class="sub" id="verdict-sub"></span>
+      </span>
+    </div>
+  </div>
 
-        document.getElementById('quantum-btn').addEventListener('click', async function(){
-            const statusEl = document.getElementById('quantum-status');
-            const resultsEl = document.getElementById('quantum-results');
-            statusEl.innerText = "Running comparison... this can take a few seconds.";
-            resultsEl.style.display = "none";
+  <div class="card">
+    <h2>Classical vs Quantum (VQC) comparison</h2>
+    <p class="hint">Trains a Logistic Regression model and a 4-qubit Variational Quantum Classifier (RY feature map, CNOT entanglement, RX ansatz, COBYLA optimizer) on the same data, then compares them. Takes ~20-30 seconds.</p>
+    <button id="compare-btn" onclick="runQuantumCompare()">Run comparison</button>
+    <div class="status-msg" id="compare-status"></div>
 
-            try {
-                const res = await fetch('/quantum-compare', { method: 'POST' });
-                const data = await res.json();
+    <div class="charts-wrap" id="charts-wrap">
+      <div class="chart-box">
+        <canvas id="metricsChart"></canvas>
+      </div>
+      <div class="chart-box">
+        <canvas id="timeChart"></canvas>
+      </div>
+      <table class="metrics-table" id="metrics-table"></table>
+    </div>
+  </div>
 
-                if (!res.ok) {
-                    statusEl.innerText = "Error: " + (data.error || "unknown error");
-                    return;
-                }
+  <div class="note">
+    Note: this is an educational/demo comparison. A shallow 4-qubit VQC with a single trainable layer typically has less
+    representational capacity than a classical model on this dataset, so it's normal to see the classical model score higher.
+  </div>
 
-                document.getElementById('c-time').innerText = data.classical_prediction_time;
-                document.getElementById('q-time').innerText = data.quantum_prediction_time;
-                document.getElementById('c-acc').innerText = data.classical_accuracy;
-                document.getElementById('q-acc').innerText = data.quantum_accuracy;
-                document.getElementById('quantum-chart').src = data.chart_url + "?t=" + Date.now();
+<script>
+let metricsChartInstance = null;
+let timeChartInstance = null;
 
-                statusEl.innerText = "";
-                resultsEl.style.display = "block";
-            } catch (err) {
-                statusEl.innerText = "Request failed: " + err.message;
-            }
-        });
-    </script>
+async function runPredict() {
+  const btn = document.getElementById('predict-btn');
+  const verdict = document.getElementById('verdict');
+  const fields = ['age','sex','cp','trestbps','chol','fbs','restecg','thalach','exang','oldpeak','slope','ca','thal'];
+  const data = {};
+  fields.forEach(f => data[f] = document.getElementById(f).value);
+
+  btn.disabled = true;
+  btn.textContent = 'Checking...';
+  verdict.style.display = 'none';
+
+  try {
+    const res = await fetch('/predict', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data)
+    });
+    const json = await res.json();
+
+    const isRisk = Number(json.prediction) === 1;
+    verdict.className = 'verdict ' + (isRisk ? 'risk' : 'safe');
+    document.getElementById('verdict-icon').textContent = isRisk ? '⚠️' : '✅';
+    document.getElementById('verdict-text').textContent = isRisk
+      ? 'Heart disease risk detected'
+      : 'No heart disease risk detected';
+    document.getElementById('verdict-sub').textContent =
+      'Based on the Random Forest model trained on the provided patient data.';
+    verdict.style.display = 'flex';
+  } catch (e) {
+    verdict.className = 'verdict risk';
+    document.getElementById('verdict-icon').textContent = '⚠️';
+    document.getElementById('verdict-text').textContent = 'Something went wrong';
+    document.getElementById('verdict-sub').textContent = String(e);
+    verdict.style.display = 'flex';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Check risk';
+  }
+}
+
+async function runQuantumCompare() {
+  const btn = document.getElementById('compare-btn');
+  const status = document.getElementById('compare-status');
+  const chartsWrap = document.getElementById('charts-wrap');
+
+  btn.disabled = true;
+  btn.textContent = 'Running...';
+  status.textContent = 'Training classical + quantum models, this can take up to 30 seconds...';
+  chartsWrap.style.display = 'none';
+
+  try {
+    const res = await fetch('/quantum-compare', { method: 'POST' });
+    const json = await res.json();
+
+    if (json.error) {
+      status.textContent = 'Error: ' + json.error;
+      return;
+    }
+
+    const classical = json.classical;
+    const quantum = json.quantum_vqc;
+
+    // --- Accuracy / precision / recall / f1 grouped bar chart ---
+    const metricLabels = ['Accuracy', 'Precision', 'Recall', 'F1 Score'];
+    const classicalVals = [classical.accuracy, classical.precision, classical.recall, classical.f1];
+    const quantumVals = [quantum.accuracy, quantum.precision, quantum.recall, quantum.f1];
+
+    if (metricsChartInstance) metricsChartInstance.destroy();
+    metricsChartInstance = new Chart(document.getElementById('metricsChart'), {
+      type: 'bar',
+      data: {
+        labels: metricLabels,
+        datasets: [
+          { label: 'Classical (Logistic Regression)', data: classicalVals, backgroundColor: '#4C72B0' },
+          { label: 'Quantum (VQC)', data: quantumVals, backgroundColor: '#DD8452' }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'Classification performance' }, legend: { position: 'bottom' } },
+        scales: { y: { beginAtZero: true, max: 1 } }
+      }
+    });
+
+    // --- Training / prediction time chart ---
+    if (timeChartInstance) timeChartInstance.destroy();
+    timeChartInstance = new Chart(document.getElementById('timeChart'), {
+      type: 'bar',
+      data: {
+        labels: ['Training time (s)', 'Prediction time (s)'],
+        datasets: [
+          { label: 'Classical', data: [classical.training_time_s, classical.prediction_time_s], backgroundColor: '#4C72B0' },
+          { label: 'Quantum (VQC)', data: [quantum.training_time_s, quantum.prediction_time_s], backgroundColor: '#DD8452' }
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { title: { display: true, text: 'Computation time' }, legend: { position: 'bottom' } },
+        scales: { y: { beginAtZero: true, type: 'logarithmic', title: { display: true, text: 'seconds (log scale)' } } }
+      }
+    });
+
+    // --- Small numeric table underneath, for exact values ---
+    const table = document.getElementById('metrics-table');
+    table.innerHTML = `
+      <tr><th>Metric</th><th>Classical</th><th>Quantum (VQC)</th></tr>
+      <tr><td>Accuracy</td><td>${(classical.accuracy*100).toFixed(1)}%</td><td>${(quantum.accuracy*100).toFixed(1)}%</td></tr>
+      <tr><td>Precision</td><td>${(classical.precision*100).toFixed(1)}%</td><td>${(quantum.precision*100).toFixed(1)}%</td></tr>
+      <tr><td>Recall</td><td>${(classical.recall*100).toFixed(1)}%</td><td>${(quantum.recall*100).toFixed(1)}%</td></tr>
+      <tr><td>F1 Score</td><td>${(classical.f1*100).toFixed(1)}%</td><td>${(quantum.f1*100).toFixed(1)}%</td></tr>
+      <tr><td>Training time</td><td>${classical.training_time_s}s</td><td>${quantum.training_time_s}s</td></tr>
+      <tr><td>Prediction time</td><td>${classical.prediction_time_s}s</td><td>${quantum.prediction_time_s}s</td></tr>
+    `;
+
+    status.textContent = '';
+    chartsWrap.style.display = 'block';
+  } catch (e) {
+    status.textContent = 'Error: ' + e;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Run comparison';
+  }
+}
+</script>
 </body>
 </html>

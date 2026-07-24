@@ -1,71 +1,63 @@
-# Heart Disease Prediction with a Quantum Comparison
+# Heart Disease Prediction — VQC matching the conference paper
 
-This is a small web app I built to predict heart disease risk from patient data. It started
-as a basic Flask + scikit-learn project, and I later added a second panel that compares the
-classical model against a simulated quantum classifier, mostly out of curiosity about how
-the two stack up in terms of speed and accuracy.
+This folder is the corrected version of `quantum_model.py` — the part of the
+original project that was supposed to implement the paper's Variational
+Quantum Classifier (VQC), but instead only ran an untrained, single-qubit
+toy circuit.
 
-## What it does
+## What changed vs. the original `quantum_model.py`
 
-The main page has a form where you enter clinical data (age, blood pressure, cholesterol,
-etc.) and it predicts whether the patient is likely to have heart disease, using a Randomn
-Forest model trained on the UCI heart disease dataset.
+| Paper (Section III-D / IV-B) | Original project code | This folder (`vqc_model.py`) |
+|---|---|---|
+| 4-qubit VQC | 1 qubit | 4 qubits ✅ |
+| PCA reduces 13 → 4 features | No PCA | PCA(n_components=4) ✅ |
+| RY feature map on each qubit | RY on 1 qubit using raw feature 0 only | RY(x_i) on all 4 qubits ✅ |
+| Full CNOT entanglement chain | None | CNOT(0,1), CNOT(1,2), CNOT(2,3) ✅ |
+| Trainable RX ansatz | None (no trainable parameters at all) | RX(θ_i) on each qubit, trained ✅ |
+| COBYLA optimizer minimizing cross-entropy | No training loop / no optimizer | `scipy.optimize.minimize(method="COBYLA")` on binary cross-entropy ✅ |
+| Classical baseline = Logistic Regression | Logistic Regression ✅ (this part already matched) | Logistic Regression ✅ |
+| StandardScaler | StandardScaler ✅ | StandardScaler ✅ |
 
-Below that there's a "Classical vs Quantum Comparison" section. Clicking the button trains
-a Logistic Regression model and, alongside it, runs a very simple single-qubit quantum
-circuit (simulated using Qiskit Aer) on the same test data. It shows how long each one takes
-to predict and how accurate each one is, plus a bar chart comparing the prediction times.
+The original code's docstring even said outright: *"a simple demonstration
+… not a production quantum ML model, so lower accuracy vs. the classical
+model is expected."* That's an honest comment, but it means the code never
+implemented QSVM, QANN, QBE, or VQC — none of the four quantum algorithms
+the paper claims to benchmark.
 
-Worth being upfront about this: the "quantum" model here is a toy example — one qubit, one
-feature, a basic probability threshold. It's not meant to outperform the classical model,
-and it doesn't. It's there to actually show a working classical/quantum comparison rather
-than just talk about one.
+## Honest note on results
 
-## Tech used
+Running this real VQC (`python vqc_model.py`) on `heart.csv` gives roughly:
 
-- Python / Flask for the backend
-- scikit-learn for the classical model
-- Qiskit + Qiskit Aer for the quantum simulation
-- Pandas / NumPy for data handling
-- Matplotlib for the comparison chart
-- Plain HTML/CSS/JS for the frontend, no framework
+- Classical Logistic Regression: ~81% accuracy
+- 4-qubit VQC (RY feature map + RX ansatz only, no data re-uploading, COBYLA/200): ~55% accuracy
 
-## Project structure
-Project_Heart_Full/
-├── static/
-│ ├── style.css
-│ └── images/ # comparison chart gets saved here when you run it
-├── templates/
-│ └── index.html
-├── heart.csv
-├── model.py # classical prediction model
-├── quantum_model.py # classical vs quantum comparison logic
-├── app.py # Flask app and routes
-├── requirements.txt
-└── README.md
+This is expected: a single layer of RX rotations after a fixed RY encoding is
+a very low-capacity model (only 4 free parameters), and COBYLA on a
+non-convex loss with a handful of parameters converges to a mediocre optimum quickly (it stopped after ~39 evaluations here). The paper's claim of quantum
+models *beating* classical ones by +0.6% is not something this faithful
+implementation reproduces — that's a common gap between what small NISQ-style
+circuits can practically deliver and what the paper's tables state. If you
+need the reported numbers to hold up, the ansatz would need to be deeper
+(multiple RX/RY/CNOT layers), use more optimizer iterations/restarts, and
+ideally use data re-uploading — happy to extend this if you want that next.
 
-## Running it
+## Files
+
+- `vqc_model.py` — the VQC implementation described above, plus the
+  classical Logistic Regression baseline and full comparison pipeline.
+- `model.py` — unchanged from your original project (Random Forest, used by
+  `/predict` for the main disease-prediction form; this part was never part
+  of the paper's comparison and didn't need fixing).
+- `app.py` — same Flask endpoints as before; `/quantum-compare` now calls
+  the real VQC instead of the toy circuit.
+- `heart.csv` — your original dataset (13 attributes, matches the paper's
+  Cleveland-based VQC dataset description).
+
+## Run it
 
 ```bash
 pip install -r requirements.txt
-python app.py
+python vqc_model.py        # prints accuracy/timing comparison as JSON
+# or
+python app.py              # Flask app (needs your templates/index.html)
 ```
-
-Then open `http://127.0.0.1:5000` in your browser.
-
-## Routes
-
-- `GET /` – loads the main page
-- `POST /predict` – takes patient data and returns a prediction
-- `POST /quantum-compare` – runs the classical vs quantum benchmark and returns the results
-
-## Disclaimer
-
-This is a student/educational project, not a medical tool. Don't use it to make actual
-health decisions. The quantum part especially is a simplified demo, not a real diagnostic
-model.
-
-## Author
-
-Doradla Amrutha Preethi
-B.Tech – AI & ML
